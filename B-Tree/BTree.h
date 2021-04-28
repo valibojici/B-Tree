@@ -6,7 +6,7 @@ template <class T>
 class BTree
 {
 private:
-	int m_order;
+	size_t m_order;
 
 	struct Node {
 		bool isLeaf = true;
@@ -29,13 +29,18 @@ public:
 template <class T> 
 void BTree<T>::m_inordine(std::ostream& out, const Node* node) const
 {
+	//if (node == nullptr)return;
 	int n = node->keys.size();
+	
 	for (int i = 0; i < n; ++i)
 	{
-		m_inordine(out, node->children[i]);
-		out << node->keys[i];
+		if(node->isLeaf == false)
+			m_inordine(out, node->children[i]);
+		out << node->keys[i] << ' ';
 	}
-	m_inordine(node->children[n]);
+
+	if(node->isLeaf == false)
+		m_inordine(out, node->children[n]);
 }
 
 template <class T>
@@ -47,28 +52,36 @@ void BTree<T>::InOrdine(std::ostream& out) const
 template <class T>
 void BTree<T>::Insert(const T& val)
 {
-	if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
+	if (m_root == nullptr)
 	{
-		Node* newRoot = new Node();
-		newRoot->children.push_back(m_root);
-		newRoot->leaf = false;
-
-		m_splitChild(newRoot, 0);
-		m_root = newRoot;
+		m_root = new Node();
+		m_root->isLeaf = true;
+		m_root->keys.push_back(val);
 	}
-	m_insert(m_root, val);
+	else
+	{
+		if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
+		{
+			Node* newRoot = new Node();
+			newRoot->children.push_back(m_root);
+			newRoot->isLeaf = false;
+
+			m_root = newRoot;
+		}
+		m_insert(m_root, val);
+	}
 }
 
 template <class T>
 void BTree<T>::m_splitChild(Node*& parent, int childIdx)
 {
-	T median = parent->children[childIdx][m_order - 1]; // m_order - 1 e mijlocul dintre 0 si 2*m_order-1-1
+	T median = parent->children[childIdx]->keys[m_order - 1]; // m_order - 1 e mijlocul dintre 0 si 2*m_order-1-1
 }
 
 template <class T>
 void BTree<T>::m_insert(Node*& node, const T& val)
 {
-	if (node->leaf == true)
+	if (node->isLeaf == true)
 	{
 		node->keys.push_back(node->keys.back()); // dummy
 
@@ -107,6 +120,14 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 			node->keys.insert(node->keys.begin() + insertPos, median); // inserez mediana inapoi in parinte inainte de poz insertPos
 	
 			node->children.insert(node->children.begin() + insertPos + 1, n); // inserez si fiul catre noul nod dupa poz insertPos
+
+			child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end());	// sterg jumatatea de chei pe care am pus-o in celalalt nod
+			child->children.erase(child->children.begin() + m_order, child->children.end()); // sterg jumatatea de fii pe care am pus-o in celelalt nod
 		}
+
+		if (val <= node->keys[insertPos])
+			m_insert(node->children[insertPos], val);
+		else
+			m_insert(node->children[insertPos+1], val);
 	}
 }
