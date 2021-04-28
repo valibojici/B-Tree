@@ -35,7 +35,7 @@ void BTree<T>::m_inordine(std::ostream& out, const Node* node) const
 		m_inordine(out, node->children[i]);
 		out << node->keys[i];
 	}
-	m_inordine(node->children[i + 1]);
+	m_inordine(node->children[n]);
 }
 
 template <class T>
@@ -47,16 +47,16 @@ void BTree<T>::InOrdine(std::ostream& out) const
 template <class T>
 void BTree<T>::Insert(const T& val)
 {
-	if (root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
+	if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
 	{
 		Node* newRoot = new Node();
-		newRoot->children.push_back(root);
+		newRoot->children.push_back(m_root);
 		newRoot->leaf = false;
 
 		m_splitChild(newRoot, 0);
-		root = newRoot;
+		m_root = newRoot;
 	}
-	m_insert(root, val);
+	m_insert(m_root, val);
 }
 
 template <class T>
@@ -80,5 +80,33 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		}
 
 		node->keys[i] = val;
+	}
+	else // daca nodul nu e frunza
+	{
+		int insertPos = 0;
+		while (insertPos < node->keys.size() && node->keys[insertPos] > val)
+			insertPos++;
+
+		Node* child = node->children[insertPos];
+
+
+		if (child->keys.size() == 2 * m_order - 1) // daca fiul e plin
+		{
+			T median = child->keys[m_order - 1];	// iau mediana din fiu
+			Node* fiuDrMediana = child->children[m_order];
+	
+			Node* n = new Node();					// creez un fiu nou in care o sa pun jumatatea din dreapta a cheilor si a fiilor
+
+			for (int i = m_order; i < 2 * m_order - 1; ++i)
+			{
+				n->keys.push_back(child->keys[i]);
+				n->children.push_back(child->children[i]);
+			}
+			n->children.push_back(child->children[2 * m_order - 1]);
+			
+			node->keys.insert(node->keys.begin() + insertPos, median);
+	
+			node->children.insert(node->children.begin() + insertPos + 1, n);
+		}
 	}
 }
