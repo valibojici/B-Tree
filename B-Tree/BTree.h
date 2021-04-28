@@ -99,14 +99,14 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 
 			for (int i = m_order; i < 2 * m_order - 1; ++i)
 			{
-				n->keys.push_back(child->keys[i]);
-				n->children.push_back(child->children[i]);
+				n->keys.push_back(child->keys[i]);				// copiez cheile
+				n->children.push_back(child->children[i]);		// copiez fii
 			}
-			n->children.push_back(child->children[2 * m_order - 1]);
+			n->children.push_back(child->children[2 * m_order - 1]); // copiez si fiul de la final de tot
 			
-			node->keys.insert(node->keys.begin() + insertPos, median);
+			node->keys.insert(node->keys.begin() + insertPos, median); // inserez mediana inapoi in parinte inainte de poz insertPos
 	
-			node->children.insert(node->children.begin() + insertPos + 1, n);
+			node->children.insert(node->children.begin() + insertPos + 1, n); // inserez si fiul catre noul nod dupa poz insertPos
 		}
 	}
 }
