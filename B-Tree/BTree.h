@@ -7,6 +7,7 @@ class BTree
 {
 private:
 	size_t m_order;
+	
 
 	struct Node {
 		bool isLeaf = true;
@@ -16,37 +17,42 @@ private:
 	Node* m_root = nullptr;
 
 	void m_splitChild(Node*&, int);
-	void m_inordine(std::ostream&, const Node*) const;
+	void m_inordine(std::vector<T>&, const Node*) const;
 	void m_insert(Node*& node, const T& val);
 
 public: 
 	BTree(int order = 2) : m_order(order) {}
-
 	void Insert(const T& val);
-	void InOrdine(std::ostream&) const;
+	std::vector<T> InOrdine() const;
 };
 
 template <class T> 
-void BTree<T>::m_inordine(std::ostream& out, const Node* node) const
+void BTree<T>::m_inordine(std::vector<T>& vals, const Node* node) const
 {
-	//if (node == nullptr)return;
-	int n = node->keys.size();
+	if (node == nullptr)return;
+	size_t n = node->keys.size();
 	
 	for (int i = 0; i < n; ++i)
 	{
+		// ma duc recursiv intr-un fiu si dupa retin cheia curenta
+		// la sfarsit o sa fie un fiu in care o sa ma duc separat
+
 		if(node->isLeaf == false)
-			m_inordine(out, node->children[i]);
-		out << node->keys[i] << ' ';
+			m_inordine(vals, node->children[i]); 
+		
+		vals.push_back(node->keys[i]);
 	}
 
-	if(node->isLeaf == false)
-		m_inordine(out, node->children[n]);
+	if(node->isLeaf == false) 
+		m_inordine(vals, node->children[n]); // iau si ultimul fiu
 }
 
 template <class T>
-void BTree<T>::InOrdine(std::ostream& out) const
+std::vector<T> BTree<T>::InOrdine() const
 {
-	m_inordine(out, m_root);
+	std::vector<T> vals;
+	m_inordine(vals, m_root);
+	return vals;
 }
 
 template <class T>
@@ -62,11 +68,14 @@ void BTree<T>::Insert(const T& val)
 	{
 		if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
 		{
-			Node* newRoot = new Node();
-			newRoot->children.push_back(m_root);
-			newRoot->isLeaf = false;
+			Node* newRoot = new Node();				// creez noua radacina
+			newRoot->children.push_back(m_root);    // ii dau ca fiu radacina curenta
+			newRoot->isLeaf = false;			    // noua radacina nu o sa fie frunza
+			m_splitChild(newRoot, 0);				// dau split la radacina
 
-			m_root = newRoot;
+			m_root = newRoot;						// radacina e acum noua radacina
+
+			m_height++;
 		}
 		m_insert(m_root, val);
 	}
@@ -91,16 +100,24 @@ void BTree<T>::m_splitChild(Node*& parent, int childIdx)
 	for (int i = m_order; i < 2*m_order-1; ++i)
 	{
 		newNode->keys.push_back(child->keys[i]);			// pun cheile din jumatate dreapta in n
-		newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
+		if(newNode->isLeaf == false)
+		{
+			newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
+		}
 	}
-	newNode->children.push_back(child->children[2 * m_order - 1]); // pun si ultimul fiu care e la 2*m_order-1
+	
+	if(newNode->isLeaf == false)
+	{
+		newNode->children.push_back(child->children[2 * m_order - 1]); // pun si ultimul fiu care e la 2*m_order-1
+	}
 
 	// sterg jumatatea de chei din fiu pe care le am pus in celalalt nod
 	child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end()); 
 
 	// sterg jumatatea de fii din fiu pe care i am pus in celalalt nod
 	// nu trebuie sters fiul din stanga medianei si din cauza asta incep de la jumatate+1 (m_order)
-	child->children.erase(child->children.begin() + m_order, child->children.end());
+	if(child->isLeaf == false)
+		child->children.erase(child->children.begin() + m_order, child->children.end());
 
 	// pun mediana in parinte
 	parent->keys.insert(parent->keys.begin() + childIdx, median);
@@ -118,7 +135,7 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		// pun valoare pe ultima poz si fac insertion sort
 		node->keys.push_back(val);
 
-		int i = node->keys.size() - 1;
+		size_t i = node->keys.size() - 1;
 		while (i > 0 && node->keys[i - 1] > val)
 		{
 			node->keys[i] = node->keys[i - 1];
@@ -129,10 +146,10 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 	else // daca nodul nu e frunza
 	{
 		int insertPos = 0;
-		while (insertPos < node->keys.size() && node->keys[insertPos] > val)
+		while (insertPos < node->keys.size() && val > node->keys[insertPos])
 			insertPos++;
 		
-		// valoare trebuie inserata la stanga de cheia de la insertPos
+		// valoare trebuie inserata la stanga de cheia de la insertPos (daca exista)
 		// adica in fiul de la insertPos
 
 		Node* child = node->children[insertPos];
@@ -148,6 +165,10 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 				m_insert(node->children[insertPos], val);
 			else
 				m_insert(node->children[insertPos + 1], val);
+		}
+		else // daca fiul nu e plin
+		{
+			m_insert(child, val);
 		}
 
 	}
