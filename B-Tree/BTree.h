@@ -75,7 +75,39 @@ void BTree<T>::Insert(const T& val)
 template <class T>
 void BTree<T>::m_splitChild(Node*& parent, int childIdx)
 {
-	T median = parent->children[childIdx]->keys[m_order - 1]; // m_order - 1 e mijlocul dintre 0 si 2*m_order-1-1
+	// desparte fiul de la childIdx care e plin in 2 noduri
+	// jumatatea din stanga o sa ramana fiul original
+	// jumatatea din dreapta o sa fie inserat in parinte inainte de fiul de la childIdx + 1 (dupa fiul original)
+	// in parinte o sa se introduca mediana din fiu
+
+	Node* child = parent->children[childIdx];
+
+	// iau mediana din fiu, m_order - 1 e mijlocul dintre 0 si 2*m_order-2  
+	T median = child->keys[m_order - 1]; 
+
+	Node* newNode = new Node();
+	newNode->isLeaf = child->isLeaf;
+
+	for (int i = m_order; i < 2*m_order-1; ++i)
+	{
+		newNode->keys.push_back(child->keys[i]);			// pun cheile din jumatate dreapta in n
+		newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
+	}
+	newNode->children.push_back(child->children[2 * m_order - 1]); // pun si ultimul fiu care e la 2*m_order-1
+
+	// sterg jumatatea de chei din fiu pe care le am pus in celalalt nod
+	child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end()); 
+
+	// sterg jumatatea de fii din fiu pe care i am pus in celalalt nod
+	// nu trebuie sters fiul din stanga medianei si din cauza asta incep de la jumatate+1 (m_order)
+	child->children.erase(child->children.begin() + m_order, child->children.end());
+
+	// pun mediana in parinte
+	parent->keys.insert(parent->keys.begin() + childIdx, median);
+
+	// legatura cu fiul din stanga a ramas mai trebuie legatura cu noul fiu creat
+	// trebuie inserat dupa fiul din stanga adica inainte de childIdx + 1
+	parent->children.insert(parent->children.begin() + childIdx + 1, newNode);
 }
 
 template <class T>
@@ -83,7 +115,8 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 {
 	if (node->isLeaf == true)
 	{
-		node->keys.push_back(node->keys.back()); // dummy
+		// pun valoare pe ultima poz si fac insertion sort
+		node->keys.push_back(val);
 
 		int i = node->keys.size() - 1;
 		while (i > 0 && node->keys[i - 1] > val)
@@ -91,7 +124,6 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 			node->keys[i] = node->keys[i - 1];
 			i--;
 		}
-
 		node->keys[i] = val;
 	}
 	else // daca nodul nu e frunza
@@ -99,35 +131,24 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		int insertPos = 0;
 		while (insertPos < node->keys.size() && node->keys[insertPos] > val)
 			insertPos++;
+		
+		// valoare trebuie inserata la stanga de cheia de la insertPos
+		// adica in fiul de la insertPos
 
 		Node* child = node->children[insertPos];
 
-
 		if (child->keys.size() == 2 * m_order - 1) // daca fiul e plin
-		{
-			T median = child->keys[m_order - 1];	// iau mediana din fiu
-			Node* fiuDrMediana = child->children[m_order];
-	
-			Node* n = new Node();					// creez un fiu nou in care o sa pun jumatatea din dreapta a cheilor si a fiilor
+		{ 
+			m_splitChild(node, insertPos); 
+			// cheia de la insertPos = mediana din fiu
+			// fiul de la insertPos = jumatatea stanga din fiul original
+			// fiul de la insertPos+1 = jumatatea dreapta din fiul original
 
-			for (int i = m_order; i < 2 * m_order - 1; ++i)
-			{
-				n->keys.push_back(child->keys[i]);				// copiez cheile
-				n->children.push_back(child->children[i]);		// copiez fii
-			}
-			n->children.push_back(child->children[2 * m_order - 1]); // copiez si fiul de la final de tot
-			
-			node->keys.insert(node->keys.begin() + insertPos, median); // inserez mediana inapoi in parinte inainte de poz insertPos
-	
-			node->children.insert(node->children.begin() + insertPos + 1, n); // inserez si fiul catre noul nod dupa poz insertPos
-
-			child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end());	// sterg jumatatea de chei pe care am pus-o in celalalt nod
-			child->children.erase(child->children.begin() + m_order, child->children.end()); // sterg jumatatea de fii pe care am pus-o in celelalt nod
+			if (val <= node->keys[insertPos])
+				m_insert(node->children[insertPos], val);
+			else
+				m_insert(node->children[insertPos + 1], val);
 		}
 
-		if (val <= node->keys[insertPos])
-			m_insert(node->children[insertPos], val);
-		else
-			m_insert(node->children[insertPos+1], val);
 	}
 }
