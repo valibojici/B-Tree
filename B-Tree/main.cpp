@@ -34,5 +34,5 @@ int main()
     auto vals = b.InOrdine();
     /* print(vals); */
     
-    std::cout << ((vals == v) ? "True" : "False") << ' ' << b.m_height;
+    std::cout << ((vals == v) ? "True" : "False") << ' ';
 }

@@ -8,7 +8,6 @@ class BTree
 private:
 	size_t m_order;
 	
-
 	struct Node {
 		bool isLeaf = true;
 		std::vector<T> keys;
@@ -30,6 +29,7 @@ template <class T>
 void BTree<T>::m_inordine(std::vector<T>& vals, const Node* node) const
 {
 	if (node == nullptr)return;
+
 	size_t n = node->keys.size();
 	
 	for (int i = 0; i < n; ++i)
@@ -75,7 +75,7 @@ void BTree<T>::Insert(const T& val)
 
 			m_root = newRoot;						// radacina e acum noua radacina
 
-			m_height++;
+		 
 		}
 		m_insert(m_root, val);
 	}
@@ -145,7 +145,7 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 	}
 	else // daca nodul nu e frunza
 	{
-		int insertPos = 0;
+		size_t insertPos = 0;
 		while (insertPos < node->keys.size() && val > node->keys[insertPos])
 			insertPos++;
 		
