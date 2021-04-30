@@ -7,7 +7,7 @@ template <class T>
 class BTree
 {
 private:
-	size_t m_order;
+	unsigned m_order;
 	
 	struct Node {
 		bool isLeaf = true;
@@ -16,12 +16,12 @@ private:
 	};
 	Node* m_root = nullptr;
 
-	void m_splitChild(Node*&, int);
+	void m_splitChild(Node*&, size_t);
 	void m_inordine(std::vector<T>&, const Node*) const;
-	void m_insert(Node*& node, const T& val);
+	void m_insert(Node*&, const T&);
 
 public: 
-	BTree(int order = 2) : m_order(order) {}
+	BTree(unsigned order = 2) : m_order(order) {}
 
 	void Insert(const T&);
 	bool Check(const T&) const;
@@ -85,7 +85,7 @@ void BTree<T>::Insert(const T& val)
 }
 
 template <class T>
-void BTree<T>::m_splitChild(Node*& parent, int childIdx)
+void BTree<T>::m_splitChild(Node*& parent, size_t childIdx)
 {
 	// desparte fiul de la childIdx care e plin in 2 noduri
 	// jumatatea din stanga o sa ramana fiul original
@@ -103,7 +103,7 @@ void BTree<T>::m_splitChild(Node*& parent, int childIdx)
 	newNode->keys.reserve(m_order - 1);
 	newNode->children.reserve(m_order);
 
-	for (int i = m_order; i < 2*m_order-1; ++i)
+	for (size_t i = m_order; i < 2*m_order-1; ++i)
 	{
 		newNode->keys.push_back(child->keys[i]);				// pun cheile din jumatate dreapta in n
 		if(newNode->isLeaf == false)
@@ -141,7 +141,7 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		// pun valoare pe ultima poz si fac insertion sort
 		node->keys.push_back(val);
 
-		unsigned i = node->keys.size() - 1;
+		size_t i = node->keys.size() - 1;
 		while (i > 0 && node->keys[i - 1] > val)
 		{
 			node->keys[i] = node->keys[i - 1];
@@ -151,12 +151,12 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 	}
 	else // daca nodul nu e frunza
 	{
-		unsigned insertPos = node->keys.size();
+		size_t insertPos = node->keys.size();
 		if (node->keys.size() > 0)
 		{
 			// caut binar cel mai din stanga element mai mare sau egala ca val
 			// incep cu step de la cea mai mare putere a lui 2 mai <= cu nr de chei (ie dimensiunea vectorului)
-			for (unsigned step = (1U << int(log2(node->keys.size()))); step; step >>= 1)
+			for (size_t step = (1ULL << size_t(log2(node->keys.size()))); step; step >>= 1)
 			{
 				if (insertPos >= step && node->keys[insertPos - step] >= val)
 					insertPos -= step;
