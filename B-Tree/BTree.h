@@ -7,6 +7,8 @@ template <class T>
 class BTree
 {
 private:
+	static size_t binSearch(const std::vector<T>&, const T& val);
+
 	unsigned m_order;
 	
 	struct Node {
@@ -25,6 +27,7 @@ public:
 
 	void Insert(const T&);
 	bool Check(const T&) const;
+	T Succesor(const T&) const;
 	std::vector<T> InOrdine() const;
 };
 
@@ -197,12 +200,7 @@ bool BTree<T>::Check(const T& val) const
 	while (true)
 	{
 		// caut binar cea mai din dreapta cheie mai mica sau egala cu val
-		unsigned pos = 0;
-		for (unsigned step = (1U << int(log2(node->keys.size()))); step; step >>= 1)
-		{
-			if (pos + step < node->keys.size() && node->keys[pos + step] <= val)
-				pos += step;
-		}
+		size_t pos = binSearch(node->keys, val);
 		
 		if (node->keys[pos] == val)		// daca cheia == val atunci val e in BTree
 		{
@@ -219,6 +217,78 @@ bool BTree<T>::Check(const T& val) const
 				node = val < node->keys[pos] ? node->children[pos] : node->children[pos+1]; // ma duc ori la stanga ori la dreapta cheii
 			}
 		}
+	}
+}
+
+template<class T>
+size_t BTree<T>::binSearch(const std::vector<T>& vals, const T& val)
+{
+	// cauta cea mai mare valoare mai mica sau egala cu val
+	// daca vectorul e gol returneaza 0
+	if (vals.empty())return 0;
+
+	size_t pos = 0;
+
+	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
+	size_t step = (1ULL << (size_t)(log2(vals.size())) );
+	for (; step; step >>= 1)
+	{
+		if (pos + step < vals.size() && vals[pos + step] <= val)
+			pos += step;
+	}
+	return pos;
+}
+
+template<class T>
+T BTree<T>::Succesor(const T& val) const
+{
+	if (m_root == nullptr)
+		throw std::out_of_range("tree is empty");
+
+	T ancestor;
+	bool hasAncestor = false;
+	Node* node = m_root;
+
+	while (true)
+	{
+		size_t pos = binSearch(node->keys, val);
+		
+		// daca e frunza succesorul e cea mai mare val mai mica sau egala cu val
+		// sau poate sa fie primul stramos mai mare ca val
+		if (node->isLeaf == true)
+		{
+			size_t pos = binSearch(node->keys, val);
+			if (node->keys[pos] == val)return val;
+			if (node->keys[pos] < val && pos < node->keys.size() - 1)
+				return node->keys[pos + 1];
+			else								// binSearch returneaza 0 daca toate valorile sunt mai mari
+				return node->keys[0]; 
+			
+		}
+
+		if (node->keys[pos] == val)
+		{
+			// daca am gasit cheia iau ori cheia ori minimul din arborele din dreapta cheii
+			if (node->isLeaf == true)return val;
+
+			Node* child = node->children[pos + 1];
+			while (child->isLeaf == false)
+				child = child->children[0];
+
+			return child->keys[0];
+		}
+		else
+		{
+			if (val < node->keys[pos])
+				node = node->children[pos];
+			else
+			{
+				hasAncestor = true;
+				node = node->children[pos + 1];
+			}
+		}
 
 	}
+
+
 }
