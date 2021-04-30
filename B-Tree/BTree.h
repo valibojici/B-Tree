@@ -22,7 +22,9 @@ private:
 
 public: 
 	BTree(int order = 2) : m_order(order) {}
-	void Insert(const T& val);
+
+	void Insert(const T&);
+	bool Check(const T&) const;
 	std::vector<T> InOrdine() const;
 };
 
@@ -181,6 +183,41 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		else // daca fiul nu e plin
 		{
 			m_insert(child, val);
+		}
+
+	}
+}
+
+template<class T>
+bool BTree<T>::Check(const T& val) const
+{
+	Node* node = m_root;
+	if (m_root == nullptr)return false;
+
+	while (true)
+	{
+		// caut binar cea mai din dreapta cheie mai mica sau egala cu val
+		unsigned pos = 0;
+		for (unsigned step = (1U << int(log2(node->keys.size()))); step; step >>= 1)
+		{
+			if (pos + step < node->keys.size() && node->keys[pos + step] <= val)
+				pos += step;
+		}
+		
+		if (node->keys[pos] == val)		// daca cheia == val atunci val e in BTree
+		{
+			return true;
+		}
+		else
+		{
+			if (node->isLeaf == true)	// daca nodul e frunza si nu s a gasit atunci nu e in BTree
+			{
+				return false;
+			}
+			else                        // daca nodul nu e frunza ma duc in fiu
+			{
+				node = val < node->keys[pos] ? node->children[pos] : node->children[pos+1]; // ma duc ori la stanga ori la dreapta cheii
+			}
 		}
 
 	}
