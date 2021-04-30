@@ -16,37 +16,31 @@ void print(const std::vector<T>& vals,const char* sep = " ", const char* end = "
 
 int main()
 {
+
+    // TO DO refactor succesor
     srand(time(0));
      
-    //std::vector<int> v;
-    //const int n = 200000;
-    //for (int i = 0; i < n; ++i)
-    //{
-    //    v.push_back(rand());
-    //}
-
-    //BTree<int> t(500);
-    //for (int i = 0; i < v.size(); ++i)
-    //{
-    //    t.Insert(v[i]);
-    //}
-
-    //std::sort(v.begin(), v.end());
-
-    ///*print(v);
-    //print(t.InOrdine());*/
-
-    //std::cout << (v == t.InOrdine());
-
     BTree<int> t(2);
+
     t.Insert(10);
     t.Insert(20);
     t.Insert(30);
     t.Insert(40);
+    t.Insert(50);
+    t.Insert(60);
+    t.Insert(70);
+    t.Insert(80);
     while (1)
     {
         int x;
         std::cin >> x;
-        std::cout << t.Check(x) << '\n';
+        try
+        {
+            std::cout << t.Succesor(x) << '\n';
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << e.what() << '\n';
+        }
     }
 }
