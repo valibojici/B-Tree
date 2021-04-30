@@ -7,7 +7,8 @@ template <class T>
 class BTree
 {
 private:
-	static size_t binSearch(const std::vector<T>&, const T& val);
+	static size_t binSearchLessEqual(const std::vector<T>&, const T& val);
+	static size_t binSearchGreaterEqual(const std::vector<T>&, const T& val);
 
 	unsigned m_order;
 	
@@ -154,17 +155,8 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 	}
 	else // daca nodul nu e frunza
 	{
-		size_t insertPos = node->keys.size();
-		if (node->keys.size() > 0)
-		{
-			// caut binar cel mai din stanga element mai mare sau egala ca val
-			// incep cu step de la cea mai mare putere a lui 2 mai <= cu nr de chei (ie dimensiunea vectorului)
-			for (size_t step = (1ULL << size_t(log2(node->keys.size()))); step; step >>= 1)
-			{
-				if (insertPos >= step && node->keys[insertPos - step] >= val)
-					insertPos -= step;
-			}
-		}
+		// caut binar cel mai din stanga element mai mare sau egala ca val
+		size_t insertPos = binSearchGreaterEqual(node->keys, val);
 		
 		// valoare trebuie inserata la stanga de cheia de la insertPos (daca exista)
 		// adica in fiul de la insertPos
@@ -200,7 +192,7 @@ bool BTree<T>::Check(const T& val) const
 	while (true)
 	{
 		// caut binar cea mai din dreapta cheie mai mica sau egala cu val
-		size_t pos = binSearch(node->keys, val);
+		size_t pos = binSearchLessEqual(node->keys, val);
 		
 		if (node->keys[pos] == val)		// daca cheia == val atunci val e in BTree
 		{
@@ -221,9 +213,10 @@ bool BTree<T>::Check(const T& val) const
 }
 
 template<class T>
-size_t BTree<T>::binSearch(const std::vector<T>& vals, const T& val)
+size_t BTree<T>::binSearchLessEqual(const std::vector<T>& vals, const T& val)
 {
 	// cauta cea mai mare valoare mai mica sau egala cu val
+	// daca toate val sunt mai mari returneaza 0
 	// daca vectorul e gol returneaza 0
 	if (vals.empty())return 0;
 
@@ -240,6 +233,25 @@ size_t BTree<T>::binSearch(const std::vector<T>& vals, const T& val)
 }
 
 template<class T>
+size_t BTree<T>::binSearchGreaterEqual(const std::vector<T>& vals, const T& val)
+{
+	// cauta cea mai mare valoare mai mare sau egala cu val
+	// daca toate val sunt mai mari returneaza vals.size
+	if (vals.empty())return 0;
+
+	size_t pos = vals.size();
+
+	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
+	size_t step = (1ULL << (size_t)(log2(vals.size())));
+	for (; step; step >>= 1)
+	{
+		if (pos >= step && vals[pos - step] >= val)
+			pos -= step;
+	}
+	return pos;
+}
+
+template<class T>
 T BTree<T>::Succesor(const T& val) const
 {
 	if (m_root == nullptr)
@@ -251,46 +263,36 @@ T BTree<T>::Succesor(const T& val) const
 
 	while (true)
 	{
-		size_t pos = binSearch(node->keys, val);
+		// iau cea mai din stanga cheie mai mare sau egala cu val
+		size_t pos = binSearchGreaterEqual(node->keys, val);
 		
-		// daca e frunza succesorul e cea mai mare val mai mica sau egala cu val
-		// sau poate sa fie primul stramos mai mare ca val
+		// daca e val e pe pozitia pos atunci chiar val e succesor
+		if (pos < node->keys.size() && node->keys[pos] == val)
+			return val;
+
+		// daca e frunza succesorul e cheia de pe pozitia pos
+		// sau, daca nu exista, primul stramos mai mare ca val (daca exista si el)
 		if (node->isLeaf == true)
 		{
-			size_t pos = binSearch(node->keys, val);
-			if (node->keys[pos] == val)return val;
-
-			if (node->keys[pos] < val)
+			if (pos == node->keys.size())					// daca toate cheile din nod sunt mai mici ca val
 			{
-				if (pos < node->keys.size() - 1)
-					return node->keys[pos + 1];
-				else if (hasAncestor)
+				if (hasAncestor)							// atunci daca exista un stramos mai mare ca val atunci el e succesor
 					return ancestor;
-				else
-					throw std::invalid_argument("no succesor");
-			}
-			else								
-				return node->keys[0];	// binSearch returneaza 0 daca toate valorile sunt mai mari
-		}
-		else // daca nu e frunza
-		{
-			size_t pos = binSearch(node->keys, val);
-			if (val == node->keys[pos])return val;
 
-			if (val < node->keys[pos])			// asta se intampla doar daca pos = 0 adica toate cheile sunt mai mari
-			{	
-				hasAncestor = true;
-				ancestor = node->keys[pos];
-				node = node->children[pos];
+				throw std::invalid_argument("no succesor"); // altfel toate valorile sunt mai mici si nu exista succesor
 			}
 			else
+				return node->keys[pos];						// altfel cheia de pe pos e succesor
+		}
+		else								// daca nu e frunza
+		{
+			if (pos == node->keys.size())	// daca toate cheile sunt mai mici ma duc in ultimul fiu
+				node = node->children[pos]; // ultimul fiu e pe pozitia pos
+			else
 			{	
-				if (pos + 1 < node->keys.size())	// ma duc in dreapta lui pos adica in stanga lui pos + 1 
-				{									// (daca exista atunci cheia de pe pos + 1 e stramos si posibil succesor)
-					hasAncestor = true;
-					ancestor = node->keys[pos + 1];
-				}
-				node = node->children[pos + 1];
+				hasAncestor = true;			// altfel ma duc in stanga cheii de pe pozitia pos
+				ancestor = node->keys[pos];	// deci cheia de pe pozitia pos e un stramos mai mare ca val si o retin
+				node = node->children[pos];
 			}
 		}
 	}
