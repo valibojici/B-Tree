@@ -16,11 +16,21 @@ void print(const std::vector<T>& vals,const char* sep = " ", const char* end = "
 
 int main()
 {
+    BTree<int> t(10);
 
-    // TO DO refactor succesor
+    
     srand(time(0));
-     
-    BTree<int> t(2);
+    
+   /* std::vector<int> v;
+    for (int i = 0; i < 100000; ++i)
+    {
+        v.push_back(rand() % 1000);
+    }
+
+    for (int i : v)
+        t.Insert(i);
+    std::sort(v.begin(), v.end());
+    std::cout << (t.InOrdine() == v);*/
 
     t.Insert(10);
     t.Insert(20);
