@@ -2,6 +2,7 @@
 #include <random>
 #include <vector>
 #include <time.h>
+#include <set>
 #include "BTree.h"
 
 template<class T>
@@ -17,35 +18,35 @@ int main()
 {
     srand(time(0));
      
-    std::vector<int> v;
-    const int n = 200000;
-    for (int i = 0; i < n; ++i)
+    //std::vector<int> v;
+    //const int n = 200000;
+    //for (int i = 0; i < n; ++i)
+    //{
+    //    v.push_back(rand());
+    //}
+
+    //BTree<int> t(500);
+    //for (int i = 0; i < v.size(); ++i)
+    //{
+    //    t.Insert(v[i]);
+    //}
+
+    //std::sort(v.begin(), v.end());
+
+    ///*print(v);
+    //print(t.InOrdine());*/
+
+    //std::cout << (v == t.InOrdine());
+
+    BTree<int> t(2);
+    t.Insert(10);
+    t.Insert(20);
+    t.Insert(30);
+    t.Insert(40);
+    while (1)
     {
-        v.push_back(rand());
+        int x;
+        std::cin >> x;
+        std::cout << t.Check(x) << '\n';
     }
-
-    BTree<int> t(500);
-    for (int i = 0; i < v.size(); ++i)
-    {
-        t.Insert(v[i]);
-    }
-
-    std::sort(v.begin(), v.end());
-
-    /*print(v);
-    print(t.InOrdine());*/
-
-    std::cout << (v == t.InOrdine());
-
-    /*std::vector<int> v = {1,1 };
-
- 
-    int pos = v.size();
-    int val = 0;
-    for (int step = int(v.empty() ? 0 : log2(v.size())); step; step >>= 1)
-    {
-        if (pos - step >= 0 && v[pos - step] > val)
-            pos -= step;
-    }
-    std::cout << pos;*/
 }
