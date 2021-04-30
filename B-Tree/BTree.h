@@ -259,35 +259,40 @@ T BTree<T>::Succesor(const T& val) const
 		{
 			size_t pos = binSearch(node->keys, val);
 			if (node->keys[pos] == val)return val;
-			if (node->keys[pos] < val && pos < node->keys.size() - 1)
-				return node->keys[pos + 1];
-			else								// binSearch returneaza 0 daca toate valorile sunt mai mari
-				return node->keys[0]; 
-			
-		}
 
-		if (node->keys[pos] == val)
-		{
-			// daca am gasit cheia iau ori cheia ori minimul din arborele din dreapta cheii
-			if (node->isLeaf == true)return val;
-
-			Node* child = node->children[pos + 1];
-			while (child->isLeaf == false)
-				child = child->children[0];
-
-			return child->keys[0];
-		}
-		else
-		{
-			if (val < node->keys[pos])
-				node = node->children[pos];
-			else
+			if (node->keys[pos] < val)
 			{
+				if (pos < node->keys.size() - 1)
+					return node->keys[pos + 1];
+				else if (hasAncestor)
+					return ancestor;
+				else
+					throw std::invalid_argument("no succesor");
+			}
+			else								
+				return node->keys[0];	// binSearch returneaza 0 daca toate valorile sunt mai mari
+		}
+		else // daca nu e frunza
+		{
+			size_t pos = binSearch(node->keys, val);
+			if (val == node->keys[pos])return val;
+
+			if (val < node->keys[pos])			// asta se intampla doar daca pos = 0 adica toate cheile sunt mai mari
+			{	
 				hasAncestor = true;
+				ancestor = node->keys[pos];
+				node = node->children[pos];
+			}
+			else
+			{	
+				if (pos + 1 < node->keys.size())	// ma duc in dreapta lui pos adica in stanga lui pos + 1 
+				{									// (daca exista atunci cheia de pe pos + 1 e stramos si posibil succesor)
+					hasAncestor = true;
+					ancestor = node->keys[pos + 1];
+				}
 				node = node->children[pos + 1];
 			}
 		}
-
 	}
 
 
