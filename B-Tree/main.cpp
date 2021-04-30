@@ -15,24 +15,37 @@ void print(const std::vector<T>& vals,const char* sep = " ", const char* end = "
 
 int main()
 {
-    // TO DO m_splitChild 
-    std::vector<int> v;
     srand(time(0));
-    for (int i = 0; i < 1000; ++i)
-        v.push_back(rand() % 3000);
-    
+     
+    std::vector<int> v;
+    const int n = 200000;
+    for (int i = 0; i < n; ++i)
+    {
+        v.push_back(rand());
+    }
 
-    /*print(v);*/
-    
-    BTree<int> b(10);
+    BTree<int> t(500);
+    for (int i = 0; i < v.size(); ++i)
+    {
+        t.Insert(v[i]);
+    }
 
-    for (int i : v)
-        b.Insert(i);
-    
     std::sort(v.begin(), v.end());
+
+    /*print(v);
+    print(t.InOrdine());*/
+
+    std::cout << (v == t.InOrdine());
+
+    /*std::vector<int> v = {1,1 };
+
  
-    auto vals = b.InOrdine();
-    /* print(vals); */
-    
-    std::cout << ((vals == v) ? "True" : "False") << ' ';
+    int pos = v.size();
+    int val = 0;
+    for (int step = int(v.empty() ? 0 : log2(v.size())); step; step >>= 1)
+    {
+        if (pos - step >= 0 && v[pos - step] > val)
+            pos -= step;
+    }
+    std::cout << pos;*/
 }

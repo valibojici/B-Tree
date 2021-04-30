@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 template <class T>
 class BTree
@@ -77,7 +78,7 @@ void BTree<T>::Insert(const T& val)
 
 		 
 		}
-		m_insert(m_root, val);
+		m_insert(m_root, val);						// pot sa inserez in radacina pt ca nu plin
 	}
 }
 
@@ -97,9 +98,12 @@ void BTree<T>::m_splitChild(Node*& parent, int childIdx)
 	Node* newNode = new Node();
 	newNode->isLeaf = child->isLeaf;
 
+	newNode->keys.reserve(m_order - 1);
+	newNode->children.reserve(m_order);
+
 	for (int i = m_order; i < 2*m_order-1; ++i)
 	{
-		newNode->keys.push_back(child->keys[i]);			// pun cheile din jumatate dreapta in n
+		newNode->keys.push_back(child->keys[i]);				// pun cheile din jumatate dreapta in n
 		if(newNode->isLeaf == false)
 		{
 			newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
@@ -135,7 +139,7 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		// pun valoare pe ultima poz si fac insertion sort
 		node->keys.push_back(val);
 
-		size_t i = node->keys.size() - 1;
+		unsigned i = node->keys.size() - 1;
 		while (i > 0 && node->keys[i - 1] > val)
 		{
 			node->keys[i] = node->keys[i - 1];
@@ -145,9 +149,17 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 	}
 	else // daca nodul nu e frunza
 	{
-		size_t insertPos = 0;
-		while (insertPos < node->keys.size() && val > node->keys[insertPos])
-			insertPos++;
+		unsigned insertPos = node->keys.size();
+		if (node->keys.size() > 0)
+		{
+			// caut binar cel mai din stanga element mai mare sau egala ca val
+			// incep cu step de la cea mai mare putere a lui 2 mai <= cu nr de chei (ie dimensiunea vectorului)
+			for (unsigned step = (1U << int(log2(node->keys.size()))); step; step >>= 1)
+			{
+				if (insertPos >= step && node->keys[insertPos - step] >= val)
+					insertPos -= step;
+			}
+		}
 		
 		// valoare trebuie inserata la stanga de cheia de la insertPos (daca exista)
 		// adica in fiul de la insertPos
@@ -161,9 +173,9 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 			// fiul de la insertPos = jumatatea stanga din fiul original
 			// fiul de la insertPos+1 = jumatatea dreapta din fiul original
 
-			if (val <= node->keys[insertPos])
+			if (val <= node->keys[insertPos])						// daca val e mai mic sau egal cu mediana ma duc in stanga
 				m_insert(node->children[insertPos], val);
-			else
+			else													// altfel ma duc in dreapta
 				m_insert(node->children[insertPos + 1], val);
 		}
 		else // daca fiul nu e plin
