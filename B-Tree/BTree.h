@@ -172,7 +172,6 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		{
 			m_insert(child, val);
 		}
-
 	}
 }
 
@@ -221,14 +220,12 @@ void BTree<T>::m_inorderRange(std::vector<T>& vals,const Node* node, const T& mi
 		return;
 	}
 
-
 	if (min > node->keys.back()) 
 	{
 		// daca min mai mare decat toate cheile ma duc in ultimul copil
 		m_inorderRange(vals, node->children.back(), min, max);
 		return;
 	}
-
 	if (max < node->keys.front())
 	{
 		// daca max e mai mic decat toate cheile ma duc in primul copil
@@ -292,7 +289,6 @@ void BTree<T>::Insert(const T& val)
 		// daca val e in radacina atunci return
 		if (m_root->keys[binSearchLessEqual(m_root->keys, val)] == val)return;
 
-
 		if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
 		{
 			Node* newRoot = new Node();				// creez noua radacina
@@ -301,8 +297,6 @@ void BTree<T>::Insert(const T& val)
 			m_splitChild(newRoot, 0);				// dau split la radacina
 
 			m_root = newRoot;						// radacina e acum noua radacina
-
-		 
 		}
 		m_insert(m_root, val);						// pot sa inserez in radacina pt ca nu plin
 	}
