@@ -88,6 +88,36 @@ void test_inorder()
     }
 }
 
+
+void test_check()
+{
+    std::set<int> s;
+    BTree<int> t(200);
+
+    for (int i = 0; i < 1000000; ++i)
+    {
+        int choice = rand() % 2;
+        int x = rand();
+        if (choice == 1)
+        {
+            t.Insert(x);
+            s.insert(x);
+        }
+        else
+        {
+            bool findTree = t.Check(x);
+            bool findSet = (s.find(x) != s.end());
+            if (findSet != findTree)
+            {
+                std::cout << x << '\n';
+                break;
+            }
+            else
+                std::cout << "OK " << findTree  << "\n";
+        }
+    }
+}
+
 int main()
 {
     
@@ -127,8 +157,8 @@ int main()
     print(t.Inorder());*/
     
 
-    test_inorder();
-    
+    //test_inorder();
+    test_check();
     /*std::vector<int> v;
     for (int i = 0; i < 100000; ++i)
     {
