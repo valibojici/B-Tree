@@ -138,20 +138,29 @@ void BTree<T>::m_rotate(Node*& parent, size_t childIdx, size_t childSiblingIdx)
 	if (childIdx < childSiblingIdx)
 	{
 		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
-		child->children.push_back(childSibling->children.front());		// iau primul fiu din fratele fiului si il pun in fiu
+		
+		if(child->isLeaf == false)
+			child->children.push_back(childSibling->children.front());	// iau primul fiu din fratele fiului si il pun in fiu
+		
 		parent->keys[childIdx] = childSibling->keys.front();			// iau prima cheie din fratele fiului si o pun in locul cheii din parinte
 
 		childSibling->keys.erase(childSibling->keys.begin());			// sterg prima cheie din fratele fiului
-		childSibling->children.erase(childSibling->children.begin());	// sterg primul fiu din fratele fiului
+		
+		if(child->isLeaf == false)
+			childSibling->children.erase(childSibling->children.begin());	// sterg primul fiu din fratele fiului
 	}
 	else
 	{
 		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
-		child->children.push_back(childSibling->children.back());		// iau ultimul fiu din fratele fiului si il pun in fiu
+		
+		if (child->isLeaf == false)
+			child->children.push_back(childSibling->children.back());	// iau ultimul fiu din fratele fiului si il pun in fiu
+		
 		parent->keys[childIdx] = childSibling->keys.back();				// iau ultima cheie din fratele fiului si o pun in locul cheii din parinte
 
 		childSibling->keys.pop_back();									// sterg ultima cheie din fratele fiului
-		childSibling->children.pop_back();								// sterg ultimul fiu din fratele fiului
+		if (child->isLeaf == false)
+			childSibling->children.pop_back();							// sterg ultimul fiu din fratele fiului
 	}
 
 }
@@ -163,19 +172,29 @@ void BTree<T>::m_joinChild(Node*& parent, size_t childIdx)
 	// cheia de la childIdx din parinte vine intre cheile din primul fiu si al doilea
 	// pointerul la fiul stang se sterge in locul lui vine fiul din dreapta care o sa fie de fapt noul nod
 
-	Node* child1 = node->children[childIdx];
-	Node* child2 = node->children[childIdx + 1];
+	Node* child1 = parent->children[childIdx];
+	Node* child2 = parent->children[childIdx + 1];
 
 	child1->keys.push_back(parent->keys[childIdx]);														// pun cheia din parinte in fiu
 	child1->keys.insert(child1->keys.end(), child2->keys.begin(), child2->keys.end());					// iau restul de chei din celalalt fiu
-	child1->children.insert(child->children.end(), child2->children.begin(), child2->children.end());	// iau restul de fii din celalalt fiu
+	child1->children.insert(child1->children.end(), child2->children.begin(), child2->children.end());	// iau restul de fii din celalalt fiu
 	
 	//sterg celalalt fiu ca nu m ai am nevoie de el
 	delete child2;
 
 	parent->keys.erase(parent->keys.begin() + childIdx);			// sterg cheia pe care am trimis o in fiu
-	parent->children.erase(parent->children.begin() + childIdx);    // elimin fiul pe care l am sters
-	parent->children[childIdx] = child1;							// fiul este acum noul fiu format
+	
+	if (parent == m_root && m_root->keys.size() == 0)				// s ar putea ca parintele sa fie radacina si sa ramana goala
+	{
+			delete m_root;											// radacina ramane goala => sterg radacina
+			m_root = child1;										//acum radacina e noul fiu format
+	}
+	else
+	{
+		parent->children.erase(parent->children.begin() + childIdx);    // elimin fiul pe care l am sters
+		parent->children[childIdx] = child1;							// fiul este acum noul fiu format
+	}
+
 }
 
 template <class T>
@@ -249,14 +268,18 @@ void BTree<T>::m_erase(Node*& node, const T& val)
 			Node* child = nullptr;
 			Node* leftSibling = nullptr;
 			Node* rightSibling = nullptr;
+			size_t childIdx;
 
 			if (val < node->keys.front())
 			{
+				childIdx = 0;
 				child = node->children[0];			// daca val e mai < ca toate cheilie ma duc in primul fiu
 				rightSibling = node->children[1];	// are doar frate la dreapta
 			}
 			else
 			{
+				childIdx = pos + 1;
+
 				child = node->children[pos + 1];	// cheia de la pos e mai < decat val deci ma duc in dreapta
 				leftSibling = node->children[pos];	// are sigur frate la stanga
 				if (pos < node->keys.size() - 1)	// are frate la dreapta doar daca nu trebuie sa ma duc in ultimul fiu
@@ -267,22 +290,40 @@ void BTree<T>::m_erase(Node*& node, const T& val)
 			{
 				if (leftSibling != nullptr && leftSibling->keys.size() > m_order - 1)		 // daca are frate la stanga si nu e minimal iau de la el o cheie
 				{
-					m_rotate(node, pos + 1, pos);
+					m_rotate(node, childIdx, childIdx-1);
 				}
 				else if (rightSibling != nullptr && rightSibling->keys.size() > m_order - 1) // daca are frate la dreapta si nu e minimal iau de la el o cheie
 				{
-					m_rotate(node, pos + 1, pos + 2);
+					m_rotate(node, childIdx, childIdx+1);
 				}
-				else
+				else																		// altfel daca are fratii minimali unesc un frate cu fiul
 				{
+					bool rootHasBeenDeleted = false;			// daca radacina are 1 cheie atunci o sa fie inlocuita cu fiul combinat
+					if (node == m_root && m_root->keys.size() == 1)rootHasBeenDeleted = true;
+
 					if (leftSibling != nullptr)
-						m_joinChild(node, pos);		// unesc fratele la stanga cu fiul
+					{
+						m_joinChild(node, childIdx - 1);		// unesc fratele la stanga cu fiul
+						m_erase(leftSibling, val);				// acum fratele la stanga s a combinat cu fiul si stergerea continua in fratele la stanga
+					}
 					else
-						m_joinChild(node, pos + 1); // unesc fiul cu fratele la dreapta
+					{
+						m_joinChild(node, childIdx);			// unesc fiul cu fratele la dreapta
+						m_erase(child, val);					// acum fiul s a combinat cu fratele la dreapta si stergerea continua in fiu
+					}
+
+					if (rootHasBeenDeleted)						// daca radacina e modificata apelez din nou m_erase din radacina
+					{
+						m_erase(m_root, val);
+						return;
+					}
 				}
 			}
-			// acum fiul nu e minimal
-			m_erase(child, val);
+			else
+			{
+				// fiul nu e minimal
+				m_erase(child, val);
+			}
 		}
 	}
 }
@@ -417,7 +458,7 @@ void BTree<T>::Insert(const T& val)
 template<class T>
 void BTree<T>::Erase(const T& val)
 {
-
+	m_erase(m_root, val);
 }
 
 template<class T>
