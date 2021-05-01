@@ -313,21 +313,17 @@ bool BTree<T>::Check(const T& val) const
 		// caut binar cea mai din dreapta cheie mai mica sau egala cu val
 		size_t pos = binSearchLessEqual(node->keys, val);
 		
-		if (node->keys[pos] == val)		// daca cheia == val atunci val e in BTree
-		{
+		if (node->keys[pos] == val)			// daca o gasesc returnez true
 			return true;
-		}
+
+		if (node->isLeaf == true)			// daca e frunza si n am gasit val atunci returnez false
+			return false;
+
+		if (val < node->keys.front())		// daca val e mai mica decat toate cheile ma duc in primul fiu
+			node = node->children[0];
 		else
-		{
-			if (node->isLeaf == true)	// daca nodul e frunza si nu s a gasit atunci nu e in BTree
-			{
-				return false;
-			}
-			else                        // daca nodul nu e frunza ma duc in fiu
-			{
-				node = val < node->keys[pos] ? node->children[pos] : node->children[pos+1]; // ma duc ori la stanga ori la dreapta cheii
-			}
-		}
+			node = node->children[pos+1];	// altfel ma duc in dreapta cheii de pe pozitia pos
+
 	}
 }
 
