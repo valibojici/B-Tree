@@ -10,7 +10,7 @@ private:
 	static size_t binSearchLessEqual(const std::vector<T>&, const T& val);
 	static size_t binSearchGreaterEqual(const std::vector<T>&, const T& val);
 
-	unsigned m_order;
+	size_t m_order;
 	
 	struct Node {
 		bool isLeaf = true;
@@ -39,20 +39,22 @@ void BTree<T>::m_inordine(std::vector<T>& vals, const Node* node) const
 	if (node == nullptr)return;
 
 	size_t n = node->keys.size();
+
+	if (node->isLeaf == true)	// daca nodul e frunza iau toate cheile
+	{
+		vals.insert(vals.end(), node->keys.begin(), node->keys.end());
+		return;
+	}
 	
 	for (int i = 0; i < n; ++i)
 	{
 		// ma duc recursiv intr-un fiu si dupa retin cheia curenta
 		// la sfarsit o sa fie un fiu in care o sa ma duc separat
-
-		if(node->isLeaf == false)
-			m_inordine(vals, node->children[i]); 
 		
+		m_inordine(vals, node->children[i]); 	
 		vals.push_back(node->keys[i]);
 	}
-
-	if(node->isLeaf == false) 
-		m_inordine(vals, node->children[n]); // iau si ultimul fiu
+	m_inordine(vals, node->children[n]); // iau si ultimul fiu
 }
 
 template <class T>
