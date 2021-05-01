@@ -20,7 +20,8 @@ private:
 	Node* m_root = nullptr;
 
 	void m_splitChild(Node*&, size_t);
-	void m_inordine(std::vector<T>&, const Node*) const;
+	void m_inorder(std::vector<T>&, const Node*) const;
+	void m_inorderRange(std::vector<T>&, const Node*, const T&, const T&) const;
 	void m_insert(Node*&, const T&);
 
 public: 
@@ -30,11 +31,153 @@ public:
 	bool Check(const T&) const;
 	T Successor(const T&) const;
 	T Predecessor(const T&) const;
-	std::vector<T> InOrdine() const;
+	std::vector<T> Inorder() const;
+	std::vector<T> InorderRange(const T&, const T&) const;
 };
 
+template<class T>
+size_t BTree<T>::binSearchLessEqual(const std::vector<T>& vals, const T& val)
+{
+	// cauta cea mai mare valoare mai mica sau egala cu val
+	// daca toate val sunt mai mari returneaza 0
+	// daca vectorul e gol returneaza 0
+	if (vals.empty())return 0;
+
+	size_t pos = 0;
+
+	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
+	size_t step = (1ULL << (size_t)(log2(vals.size())));
+	for (; step; step >>= 1)
+	{
+		if (pos + step < vals.size() && vals[pos + step] <= val)
+			pos += step;
+	}
+	return pos;
+}
+
+template<class T>
+size_t BTree<T>::binSearchGreaterEqual(const std::vector<T>& vals, const T& val)
+{
+	// cauta cea mai mare valoare mai mare sau egala cu val
+	// daca toate val sunt mai mari returneaza vals.size
+	if (vals.empty())return 0;
+
+	size_t pos = vals.size();
+
+	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
+	size_t step = (1ULL << (size_t)(log2(vals.size())));
+	for (; step; step >>= 1)
+	{
+		if (pos >= step && vals[pos - step] >= val)
+			pos -= step;
+	}
+	return pos;
+}
+
+template <class T>
+void BTree<T>::m_splitChild(Node*& parent, size_t childIdx)
+{
+	// desparte fiul de la childIdx care e plin in 2 noduri
+	// jumatatea din stanga o sa ramana fiul original
+	// jumatatea din dreapta o sa fie inserat in parinte inainte de fiul de la childIdx + 1 (dupa fiul original)
+	// in parinte o sa se introduca mediana din fiu
+
+	Node* child = parent->children[childIdx];
+
+	// iau mediana din fiu, m_order - 1 e mijlocul dintre 0 si 2*m_order-2  
+	T median = child->keys[m_order - 1];
+
+	Node* newNode = new Node();
+	newNode->isLeaf = child->isLeaf;
+
+	newNode->keys.reserve(m_order - 1);
+	newNode->children.reserve(m_order);
+
+	for (size_t i = m_order; i < 2 * m_order - 1; ++i)
+	{
+		newNode->keys.push_back(child->keys[i]);				// pun cheile din jumatate dreapta in n
+		if (newNode->isLeaf == false)
+		{
+			newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
+		}
+	}
+
+	if (newNode->isLeaf == false)
+	{
+		newNode->children.push_back(child->children[2 * m_order - 1]); // pun si ultimul fiu care e la 2*m_order-1
+	}
+
+	// sterg jumatatea de chei din fiu pe care le am pus in celalalt nod
+	child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end());
+
+	// sterg jumatatea de fii din fiu pe care i am pus in celalalt nod
+	// nu trebuie sters fiul din stanga medianei si din cauza asta incep de la jumatate+1 (m_order)
+	if (child->isLeaf == false)
+		child->children.erase(child->children.begin() + m_order, child->children.end());
+
+	// pun mediana in parinte
+	parent->keys.insert(parent->keys.begin() + childIdx, median);
+
+	// legatura cu fiul din stanga a ramas mai trebuie legatura cu noul fiu creat
+	// trebuie inserat dupa fiul din stanga adica inainte de childIdx + 1
+	parent->children.insert(parent->children.begin() + childIdx + 1, newNode);
+}
+
+template <class T>
+void BTree<T>::m_insert(Node*& node, const T& val)
+{
+	if (node->isLeaf == true)
+	{
+		//daca am ajuns aici sigur nu adaug duplicate
+
+		// pun valoare pe ultima poz si fac insertion sort
+		node->keys.push_back(val);
+
+		size_t i = node->keys.size() - 1;
+		while (i > 0 && node->keys[i - 1] > val)
+		{
+			node->keys[i] = node->keys[i - 1];
+			i--;
+		}
+		node->keys[i] = val;
+	}
+	else // daca nodul nu e frunza
+	{
+		// caut binar cel mai din stanga element mai mare sau egala ca val
+		size_t insertPos = binSearchGreaterEqual(node->keys, val);
+
+		// daca val se afla deja in nod atunci return
+		if (insertPos < node->keys.size() && node->keys[insertPos] == val)return;	
+
+		// valoare trebuie inserata la stanga de cheia de la insertPos (daca exista)
+		// adica in fiul de la insertPos
+		Node* child = node->children[insertPos];
+
+		// daca val se afla deja in fiu atunci return
+		if (child->keys[binSearchLessEqual(child->keys, val)] == val)return;		
+
+		if (child->keys.size() == 2 * m_order - 1) // daca fiul e plin
+		{
+			m_splitChild(node, insertPos);
+			// cheia de la insertPos = mediana din fiu
+			// fiul de la insertPos = jumatatea stanga din fiul original
+			// fiul de la insertPos+1 = jumatatea dreapta din fiul original
+
+			if (val <= node->keys[insertPos])						// daca val e mai mic sau egal cu mediana ma duc in stanga
+				m_insert(node->children[insertPos], val);
+			else													// altfel ma duc in dreapta
+				m_insert(node->children[insertPos + 1], val);
+		}
+		else // daca fiul nu e plin
+		{
+			m_insert(child, val);
+		}
+
+	}
+}
+
 template <class T> 
-void BTree<T>::m_inordine(std::vector<T>& vals, const Node* node) const
+void BTree<T>::m_inorder(std::vector<T>& vals, const Node* node) const
 {
 	if (node == nullptr)return;
 
@@ -51,17 +194,87 @@ void BTree<T>::m_inordine(std::vector<T>& vals, const Node* node) const
 		// ma duc recursiv intr-un fiu si dupa retin cheia curenta
 		// la sfarsit o sa fie un fiu in care o sa ma duc separat
 		
-		m_inordine(vals, node->children[i]); 	
+		m_inorder(vals, node->children[i]); 	
 		vals.push_back(node->keys[i]);
 	}
-	m_inordine(vals, node->children[n]); // iau si ultimul fiu
+	m_inorder(vals, node->children[n]); // iau si ultimul fiu
+}
+
+template<class T>
+void BTree<T>::m_inorderRange(std::vector<T>& vals,const Node* node, const T& min, const T& max) const
+{
+	if (node == nullptr)return;
+
+	size_t pos1 = binSearchLessEqual(node->keys, min);
+	size_t pos2 = binSearchLessEqual(node->keys, max);
+
+	if (node->isLeaf)
+	{
+		if (min > node->keys.back() || max < node->keys.front())return;
+		
+		// daca min > cheia de pe pozitia pos1 atunci nu o iau
+		if (min > node->keys[pos1])
+			pos1++;
+
+		// iau toate cheile din [pos1, pos2+1)
+		vals.insert(vals.end(), node->keys.begin() + pos1, node->keys.begin() + pos2 + 1);
+		return;
+	}
+
+
+	if (min > node->keys.back()) 
+	{
+		// daca min mai mare decat toate cheile ma duc in ultimul copil
+		m_inorderRange(vals, node->children.back(), min, max);
+		return;
+	}
+
+	if (max < node->keys.front())
+	{
+		// daca max e mai mic decat toate cheile ma duc in primul copil
+		m_inorderRange(vals, node->children.front(), min, max);
+		return;
+	}
+	//cheia de pe pos1 e cea mai din dreapta cheie mai mica sau egala cu min
+	//cheia de pe pos2 e cea mai din dreapta cheie mai mica sau egala cu max
+
+	// fac separat cazul pentru cheia de pe pos1
+
+	// daca min e mai mic strict decat cheia de pe pos1 ma duc in stanga lui pos1
+	// asta se intampla doar daca min e mai mic decat prima cheie
+	if(min < node->keys[pos1])
+		m_inorderRange(vals, node->children[pos1], min, max);
+	
+	// dupa ce ma duc in stanga lui pos1 sau daca nu ma duc, retin cheia de pe pos1 daca min <= cheie
+	if(min <= node->keys[pos1])
+		vals.push_back(node->keys[pos1]);
+
+	for (size_t i = pos1 + 1; i <= pos2; ++i)
+	{
+		// iau toate cheile de la pos1 + 1 pana la pos2 inclusiv
+		// ma duc mai intai in copilul din stanga lor cheii apoi retin cheia
+		m_inorderRange(vals, node->children[i], min, max);
+		vals.push_back(node->keys[i]);
+	}
+
+	// daca max e mai mare decat cheia de pe pos2 ma duc si in copilul din dreapta
+	if (max > node->keys[pos2])
+		m_inorderRange(vals, node->children[pos2+1], min, max);
 }
 
 template <class T>
-std::vector<T> BTree<T>::InOrdine() const
+std::vector<T> BTree<T>::Inorder() const
 {
 	std::vector<T> vals;
-	m_inordine(vals, m_root);
+	m_inorder(vals, m_root);
+	return vals;
+}
+
+template <class T>
+std::vector<T> BTree<T>::InorderRange(const T& min, const T& max) const
+{
+	std::vector<T> vals;
+	m_inorderRange(vals, m_root, min, max);
 	return vals;
 }
 
@@ -76,6 +289,10 @@ void BTree<T>::Insert(const T& val)
 	}
 	else
 	{
+		// daca val e in radacina atunci return
+		if (m_root->keys[binSearchLessEqual(m_root->keys, val)] == val)return;
+
+
 		if (m_root->keys.size() == 2 * m_order - 1) // daca radacina are nr max de chei atunci fac split
 		{
 			Node* newRoot = new Node();				// creez noua radacina
@@ -88,101 +305,6 @@ void BTree<T>::Insert(const T& val)
 		 
 		}
 		m_insert(m_root, val);						// pot sa inserez in radacina pt ca nu plin
-	}
-}
-
-template <class T>
-void BTree<T>::m_splitChild(Node*& parent, size_t childIdx)
-{
-	// desparte fiul de la childIdx care e plin in 2 noduri
-	// jumatatea din stanga o sa ramana fiul original
-	// jumatatea din dreapta o sa fie inserat in parinte inainte de fiul de la childIdx + 1 (dupa fiul original)
-	// in parinte o sa se introduca mediana din fiu
-
-	Node* child = parent->children[childIdx];
-
-	// iau mediana din fiu, m_order - 1 e mijlocul dintre 0 si 2*m_order-2  
-	T median = child->keys[m_order - 1]; 
-
-	Node* newNode = new Node();
-	newNode->isLeaf = child->isLeaf;
-
-	newNode->keys.reserve(m_order - 1);
-	newNode->children.reserve(m_order);
-
-	for (size_t i = m_order; i < 2*m_order-1; ++i)
-	{
-		newNode->keys.push_back(child->keys[i]);				// pun cheile din jumatate dreapta in n
-		if(newNode->isLeaf == false)
-		{
-			newNode->children.push_back(child->children[i]);	// pun fii din jumatatea dreapta in n
-		}
-	}
-	
-	if(newNode->isLeaf == false)
-	{
-		newNode->children.push_back(child->children[2 * m_order - 1]); // pun si ultimul fiu care e la 2*m_order-1
-	}
-
-	// sterg jumatatea de chei din fiu pe care le am pus in celalalt nod
-	child->keys.erase(child->keys.begin() + m_order - 1, child->keys.end()); 
-
-	// sterg jumatatea de fii din fiu pe care i am pus in celalalt nod
-	// nu trebuie sters fiul din stanga medianei si din cauza asta incep de la jumatate+1 (m_order)
-	if(child->isLeaf == false)
-		child->children.erase(child->children.begin() + m_order, child->children.end());
-
-	// pun mediana in parinte
-	parent->keys.insert(parent->keys.begin() + childIdx, median);
-
-	// legatura cu fiul din stanga a ramas mai trebuie legatura cu noul fiu creat
-	// trebuie inserat dupa fiul din stanga adica inainte de childIdx + 1
-	parent->children.insert(parent->children.begin() + childIdx + 1, newNode);
-}
-
-template <class T>
-void BTree<T>::m_insert(Node*& node, const T& val)
-{
-	if (node->isLeaf == true)
-	{
-		// pun valoare pe ultima poz si fac insertion sort
-		node->keys.push_back(val);
-
-		size_t i = node->keys.size() - 1;
-		while (i > 0 && node->keys[i - 1] > val)
-		{
-			node->keys[i] = node->keys[i - 1];
-			i--;
-		}
-		node->keys[i] = val;
-	}
-	else // daca nodul nu e frunza
-	{
-		// caut binar cel mai din stanga element mai mare sau egala ca val
-		size_t insertPos = binSearchGreaterEqual(node->keys, val);
-		
-		// valoare trebuie inserata la stanga de cheia de la insertPos (daca exista)
-		// adica in fiul de la insertPos
-
-		Node* child = node->children[insertPos];
-
-		if (child->keys.size() == 2 * m_order - 1) // daca fiul e plin
-		{ 
-			m_splitChild(node, insertPos); 
-			// cheia de la insertPos = mediana din fiu
-			// fiul de la insertPos = jumatatea stanga din fiul original
-			// fiul de la insertPos+1 = jumatatea dreapta din fiul original
-
-			if (val <= node->keys[insertPos])						// daca val e mai mic sau egal cu mediana ma duc in stanga
-				m_insert(node->children[insertPos], val);
-			else													// altfel ma duc in dreapta
-				m_insert(node->children[insertPos + 1], val);
-		}
-		else // daca fiul nu e plin
-		{
-			m_insert(child, val);
-		}
-
 	}
 }
 
@@ -213,45 +335,6 @@ bool BTree<T>::Check(const T& val) const
 			}
 		}
 	}
-}
-
-template<class T>
-size_t BTree<T>::binSearchLessEqual(const std::vector<T>& vals, const T& val)
-{
-	// cauta cea mai mare valoare mai mica sau egala cu val
-	// daca toate val sunt mai mari returneaza 0
-	// daca vectorul e gol returneaza 0
-	if (vals.empty())return 0;
-
-	size_t pos = 0;
-
-	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
-	size_t step = (1ULL << (size_t)(log2(vals.size())) );
-	for (; step; step >>= 1)
-	{
-		if (pos + step < vals.size() && vals[pos + step] <= val)
-			pos += step;
-	}
-	return pos;
-}
-
-template<class T>
-size_t BTree<T>::binSearchGreaterEqual(const std::vector<T>& vals, const T& val)
-{
-	// cauta cea mai mare valoare mai mare sau egala cu val
-	// daca toate val sunt mai mari returneaza vals.size
-	if (vals.empty())return 0;
-
-	size_t pos = vals.size();
-
-	// incep cu step ca cea mai mare putere a lui 2 mai mica sau egala cu vals.size
-	size_t step = (1ULL << (size_t)(log2(vals.size())));
-	for (; step; step >>= 1)
-	{
-		if (pos >= step && vals[pos - step] >= val)
-			pos -= step;
-	}
-	return pos;
 }
 
 template<class T>
