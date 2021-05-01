@@ -147,18 +147,21 @@ int main()
             }
     }*/
 
-    /*BTree<int> t(2);
+    BTree<int> t(2);
 
-    for (int i : std::vector<int>{ 11,11,12 })
+    for (int i : std::vector<int>{ 1,2,3,4,5,6,7,8,9 })
         t.Insert(i);
  
 
 
-    print(t.Inorder());*/
+    print(t.Inorder()); 
     
+    t.Erase(9);
+
+    print(t.Inorder());
 
     //test_inorder();
-    test_check();
+    //test_check();
     /*std::vector<int> v;
     for (int i = 0; i < 100000; ++i)
     {
