@@ -20,14 +20,18 @@ private:
 	Node* m_root = nullptr;
 
 	void m_splitChild(Node*&, size_t);
+	void m_joinChild(Node*&, size_t);
+	void m_rotate(Node*&, size_t, size_t);
 	void m_inorder(std::vector<T>&, const Node*) const;
 	void m_inorderRange(std::vector<T>&, const Node*, const T&, const T&) const;
 	void m_insert(Node*&, const T&);
+	void m_erase(Node*&, const T&);
 
 public: 
 	BTree(unsigned order = 2) : m_order(order) {}
 
 	void Insert(const T&);
+	void Erase(const T&);
 	bool Check(const T&) const;
 	T Successor(const T&) const;
 	T Predecessor(const T&) const;
@@ -123,6 +127,57 @@ void BTree<T>::m_splitChild(Node*& parent, size_t childIdx)
 	parent->children.insert(parent->children.begin() + childIdx + 1, newNode);
 }
 
+template<class T>
+void BTree<T>::m_rotate(Node*& parent, size_t childIdx, size_t childSiblingIdx)
+{
+	Node* child = parent->children[childIdx];
+	Node* childSibling = parent->children[childSiblingIdx];
+	
+	// daca fratele fiului e la dreapta atunci iau prima cheie si primul fiu din fratele fiului
+	// alfel iau ultimul fiu si ultima cheie din fratele fiului
+	if (childIdx < childSiblingIdx)
+	{
+		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
+		child->children.push_back(childSibling->children.front());		// iau primul fiu din fratele fiului si il pun in fiu
+		parent->keys[childIdx] = childSibling->keys.front();			// iau prima cheie din fratele fiului si o pun in locul cheii din parinte
+
+		childSibling->keys.erase(childSibling->keys.begin());			// sterg prima cheie din fratele fiului
+		childSibling->children.erase(childSibling->children.begin());	// sterg primul fiu din fratele fiului
+	}
+	else
+	{
+		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
+		child->children.push_back(childSibling->children.back());		// iau ultimul fiu din fratele fiului si il pun in fiu
+		parent->keys[childIdx] = childSibling->keys.back();				// iau ultima cheie din fratele fiului si o pun in locul cheii din parinte
+
+		childSibling->keys.pop_back();									// sterg ultima cheie din fratele fiului
+		childSibling->children.pop_back();								// sterg ultimul fiu din fratele fiului
+	}
+
+}
+
+template<class T>
+void BTree<T>::m_joinChild(Node*& parent, size_t childIdx)
+{
+	// iau fiul de la pozitia childIdx si il unesc cu fiul de la childIdx + 1
+	// cheia de la childIdx din parinte vine intre cheile din primul fiu si al doilea
+	// pointerul la fiul stang se sterge in locul lui vine fiul din dreapta care o sa fie de fapt noul nod
+
+	Node* child1 = node->children[childIdx];
+	Node* child2 = node->children[childIdx + 1];
+
+	child1->keys.push_back(parent->keys[childIdx]);														// pun cheia din parinte in fiu
+	child1->keys.insert(child1->keys.end(), child2->keys.begin(), child2->keys.end());					// iau restul de chei din celalalt fiu
+	child1->children.insert(child->children.end(), child2->children.begin(), child2->children.end());	// iau restul de fii din celalalt fiu
+	
+	//sterg celalalt fiu ca nu m ai am nevoie de el
+	delete child2;
+
+	parent->keys.erase(parent->keys.begin() + childIdx);			// sterg cheia pe care am trimis o in fiu
+	parent->children.erase(parent->children.begin() + childIdx);    // elimin fiul pe care l am sters
+	parent->children[childIdx] = child1;							// fiul este acum noul fiu format
+}
+
 template <class T>
 void BTree<T>::m_insert(Node*& node, const T& val)
 {
@@ -171,6 +226,63 @@ void BTree<T>::m_insert(Node*& node, const T& val)
 		else // daca fiul nu e plin
 		{
 			m_insert(child, val);
+		}
+	}
+}
+
+template<class T>
+void BTree<T>::m_erase(Node*& node, const T& val)
+{
+	size_t pos = binSearchLessEqual(node->keys, val);
+	if (node->isLeaf)
+	{
+		// daca nodul e frunza atunci caut si sterg val
+		if (node->keys[pos] == val)
+			node->keys.erase(node->keys.begin() + pos);
+	}
+	else // daca nodul nu e frunza
+	{
+		// daca val e mai mic ca toate cheile ma duc in primul fiu altfel ma duc in fiul de la pos + 1
+
+		if (node->keys[pos] != val) // daca val nu e in nodul asta
+		{
+			Node* child = nullptr;
+			Node* leftSibling = nullptr;
+			Node* rightSibling = nullptr;
+
+			if (val < node->keys.front())
+			{
+				child = node->children[0];			// daca val e mai < ca toate cheilie ma duc in primul fiu
+				rightSibling = node->children[1];	// are doar frate la dreapta
+			}
+			else
+			{
+				child = node->children[pos + 1];	// cheia de la pos e mai < decat val deci ma duc in dreapta
+				leftSibling = node->children[pos];	// are sigur frate la stanga
+				if (pos < node->keys.size() - 1)	// are frate la dreapta doar daca nu trebuie sa ma duc in ultimul fiu
+					rightSibling = node->children[pos + 2];
+			}
+			
+			if (child->keys.size() == m_order - 1)	// fiul e minimal nu pot sa ma duc in el
+			{
+				if (leftSibling != nullptr && leftSibling->keys.size() > m_order - 1)		 // daca are frate la stanga si nu e minimal iau de la el o cheie
+				{
+					m_rotate(node, pos + 1, pos);
+				}
+				else if (rightSibling != nullptr && rightSibling->keys.size() > m_order - 1) // daca are frate la dreapta si nu e minimal iau de la el o cheie
+				{
+					m_rotate(node, pos + 1, pos + 2);
+				}
+				else
+				{
+					if (leftSibling != nullptr)
+						m_joinChild(node, pos);		// unesc fratele la stanga cu fiul
+					else
+						m_joinChild(node, pos + 1); // unesc fiul cu fratele la dreapta
+				}
+			}
+			// acum fiul nu e minimal
+			m_erase(child, val);
 		}
 	}
 }
@@ -300,6 +412,12 @@ void BTree<T>::Insert(const T& val)
 		}
 		m_insert(m_root, val);						// pot sa inserez in radacina pt ca nu plin
 	}
+}
+
+template<class T>
+void BTree<T>::Erase(const T& val)
+{
+
 }
 
 template<class T>
