@@ -28,7 +28,8 @@ public:
 
 	void Insert(const T&);
 	bool Check(const T&) const;
-	T Succesor(const T&) const;
+	T Successor(const T&) const;
+	T Predecessor(const T&) const;
 	std::vector<T> InOrdine() const;
 };
 
@@ -252,7 +253,7 @@ size_t BTree<T>::binSearchGreaterEqual(const std::vector<T>& vals, const T& val)
 }
 
 template<class T>
-T BTree<T>::Succesor(const T& val) const
+T BTree<T>::Successor(const T& val) const
 {
 	if (m_root == nullptr)
 		throw std::out_of_range("tree is empty");
@@ -296,6 +297,51 @@ T BTree<T>::Succesor(const T& val) const
 			}
 		}
 	}
+}
 
+template<class T>
+T BTree<T>::Predecessor(const T& val) const
+{
+	if (m_root == nullptr)
+		throw std::out_of_range("tree is empty");
 
+	T ancestor;
+	bool hasAncestor = false;
+	Node* node = m_root;
+
+	while (true)
+	{
+		size_t pos = binSearchLessEqual(node->keys, val);
+
+		// daca e val e pe pozitia pos atunci chiar val e predecesor
+		if (node->keys[pos] == val)
+			return val;
+
+		if (node->isLeaf == true)		
+		{
+			// binSearchLessEqual returneaza chiar daca toate elem sunt mai mari, din cauza asta testez daca cheia este < ca val
+
+			if (node->keys[pos] < val)	// daca e frunza si cheie de pe pos e mai mica ca val atunci ea e predecesor
+				return node->keys[pos];
+			
+			// altfel toate cheile sunt mai mari si verific daca am stramos
+			if (hasAncestor)
+				return ancestor;
+			
+			// altfel n am stramos deci n am predecesor (toate val din btree sunt mai mari ca val)
+			throw std::invalid_argument("no predecessor");
+		}
+		else // daca nu e frunza
+		{
+			if (node->keys[pos] > val) // daca toate val sunt mai mari ma duc in primul copil
+				node = node->children[0];
+			else
+			{
+				// cheia de pe pozitia pos e < decat val deci o retin ca posibil predecesor
+				hasAncestor = true;
+				ancestor = node->keys[pos];
+				node = node->children[pos+1];			// ma duc in dreapta cheii si iau minimul de acolo
+			}
+		}
+	}
 }
