@@ -4,33 +4,132 @@
 #include <time.h>
 #include <set>
 #include "BTree.h"
+#include <fstream>
 
 template<class T>
 void print(const std::vector<T>& vals,const char* sep = " ", const char* end = "\n") {
-    if (vals.empty())return;
-    std::cout << vals[0];
-    for (int i = 1; i < vals.size(); ++i)
-        std::cout << sep << vals[i];
+    if (!vals.empty())
+    {
+        std::cout << vals[0];
+        for (int i = 1; i < vals.size(); ++i)
+            std::cout << sep << vals[i];
+    }
     std::cout << end;
 }
 
-std::vector<int> v = { 1,2,3 };
-
-void f(std::vector<int>& vals)
+std::vector<int> getRange(const std::set<int>& v, int min, int max)
 {
-    vals = v;
+    std::vector<int> result;
+    for (int i : v)
+        if (min <= i && i <= max)result.push_back(i);
+    return result;
 }
 
+void test_inorder()
+{
+    srand(time(0));
+    std::set<int> v;
+    BTree<int> t(5);
+
+    for (int i = 0; i < 20000; ++i)
+    {
+        int x = rand();
+        t.Insert(x);
+        v.insert(x);
+    }
+     
+ 
+
+    while (1)
+    {
+        int x, y;
+        //std::cin >> x >> y;
+        x = rand(), y = rand();
+
+        if (x > y)std::swap(x, y);
+
+
+        bool result = (t.InorderRange(x, y) == getRange(v, x, y));
+        
+        //std::cout << x << ' ' << y << ' ' << result << '\n';
+        
+        if (!result)
+        {
+            std::vector<int> temp;
+            for (int i : v)
+                temp.push_back(i);
+
+            std::cout << (t.Inorder() == temp) << '\n';
+
+            std::ofstream g("out.out");
+            std::cout << "vector: ";
+
+            for (int i : getRange(v, x, y))
+                g << i << ' ';
+            g << '\n';
+
+            print(getRange(v, x, y));
+            std::cout << "btree: ";
+            for (int i : t.InorderRange(x, y))
+                g << i << ' ';
+
+            temp = t.Inorder();
+
+            for (int i = 1; i < temp.size(); ++i)
+                if (temp[i] == temp[i - 1])
+                    std::cout << "---------------> " << temp[i] << '\n';
+
+            print(t.InorderRange(x, y));
+
+            
+            break;
+        }
+        //std::cout << (t.InorderRange(x, y) == getRange(v, x, y)) << '\n';
+    }
+}
 
 int main()
 {
-    BTree<int> t(10);
+    
 
     
     srand(time(0));
-    
+
+    /*int i = 1;
+    while (i++ < 300000)
+    {
+        std::cout << i << ":\n";
+        BTree<int> t(2);
+        std::vector<int> temp;
+        for (int i = 0; i < 1000; ++i)
+            temp.push_back(rand());
+
+        for (int k : temp)
+            t.Insert(k);
+
+        std::vector<int> v = t.Inorder();
+        for (int k = 1; k < v.size(); ++k)
+            if (v[k] == v[k - 1])
+            {
+                std::cout << v[k] << '\n';
+                print(temp);
+                i = INT_MAX;
+            }
+    }*/
+
+    /*BTree<int> t(2);
+
+    for (int i : std::vector<int>{ 11,11,12 })
+        t.Insert(i);
  
-    std::vector<int> v;
+
+
+    print(t.Inorder());*/
+    
+
+    test_inorder();
+    
+    /*std::vector<int> v;
     for (int i = 0; i < 100000; ++i)
     {
         v.push_back(rand());
@@ -39,17 +138,14 @@ int main()
     for (int i : v)
         t.Insert(i);
     std::sort(v.begin(), v.end());
-    std::cout << (t.InOrdine() == v);
+    std::cout << (t.Inorder() == v);*/
 
 
-   /* t.Insert(10);
-    t.Insert(20);
-    t.Insert(30);
-    t.Insert(40);
-    t.Insert(50);
-    t.Insert(60);
-    t.Insert(70);
-    t.Insert(80);
+   /* for (int i = 1; i < 200; ++i)
+        t.Insert(i);
+
+    print(t.InorderRange(9, 26));*/
+    /*
     while (1)
     {
         int x;
