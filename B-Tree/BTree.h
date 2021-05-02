@@ -26,6 +26,9 @@ private:
 	void m_inorderRange(std::vector<T>&, const Node*, const T&, const T&) const;
 	void m_insert(Node*&, const T&);
 	void m_erase(Node*&, const T&);
+	T m_eraseMinimum(Node*&);
+	T m_eraseMaximum(Node*&);
+	void m_deleteTree(Node*&);
 
 public: 
 	BTree(unsigned order = 2) : m_order(order) {}
@@ -37,6 +40,7 @@ public:
 	T Predecessor(const T&) const;
 	std::vector<T> Inorder() const;
 	std::vector<T> InorderRange(const T&, const T&) const;
+	~BTree();
 };
 
 template<class T>
@@ -137,10 +141,10 @@ void BTree<T>::m_rotate(Node*& parent, size_t childIdx, size_t childSiblingIdx)
 	// alfel iau ultimul fiu si ultima cheie din fratele fiului
 	if (childIdx < childSiblingIdx)
 	{
-		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
+		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu ca ultima cheie
 		
 		if(child->isLeaf == false)
-			child->children.push_back(childSibling->children.front());	// iau primul fiu din fratele fiului si il pun in fiu
+			child->children.push_back(childSibling->children.front());	// iau primul fiu din fratele fiului si il pun in fiu ca ultimul fiu
 		
 		parent->keys[childIdx] = childSibling->keys.front();			// iau prima cheie din fratele fiului si o pun in locul cheii din parinte
 
@@ -151,16 +155,16 @@ void BTree<T>::m_rotate(Node*& parent, size_t childIdx, size_t childSiblingIdx)
 	}
 	else
 	{
-		child->keys.push_back(parent->keys[childIdx]);					// iau cheia din parinte si o pun in fiu
+		child->keys.insert(child->keys.begin(), parent->keys[childIdx-1]);				// iau cheia din parinte si o pun in fiu ca prima cheie
 		
-		if (child->isLeaf == false)
-			child->children.push_back(childSibling->children.back());	// iau ultimul fiu din fratele fiului si il pun in fiu
+		if (child->isLeaf == false)														// iau ultimul fiu din fratele fiului si il pun in fiu ca primul fiu
+			child->children.insert(child->children.begin(), childSibling->children.back());	
 		
-		parent->keys[childIdx] = childSibling->keys.back();				// iau ultima cheie din fratele fiului si o pun in locul cheii din parinte
+		parent->keys[childIdx-1] = childSibling->keys.back();							// iau ultima cheie din fratele fiului si o pun in locul cheii din parinte
 
-		childSibling->keys.pop_back();									// sterg ultima cheie din fratele fiului
+		childSibling->keys.pop_back();													// sterg ultima cheie din fratele fiului
 		if (child->isLeaf == false)
-			childSibling->children.pop_back();							// sterg ultimul fiu din fratele fiului
+			childSibling->children.pop_back();											// sterg ultimul fiu din fratele fiului
 	}
 
 }
@@ -305,11 +309,13 @@ void BTree<T>::m_erase(Node*& node, const T& val)
 					{
 						m_joinChild(node, childIdx - 1);		// unesc fratele la stanga cu fiul
 						m_erase(leftSibling, val);				// acum fratele la stanga s a combinat cu fiul si stergerea continua in fratele la stanga
+						return;
 					}
 					else
 					{
 						m_joinChild(node, childIdx);			// unesc fiul cu fratele la dreapta
 						m_erase(child, val);					// acum fiul s a combinat cu fratele la dreapta si stergerea continua in fiu
+						return;
 					}
 
 					if (rootHasBeenDeleted)						// daca radacina e modificata apelez din nou m_erase din radacina
@@ -319,16 +325,105 @@ void BTree<T>::m_erase(Node*& node, const T& val)
 					}
 				}
 			}
+			// fiul nu e minimal
+			m_erase(child, val);
+		}
+		else
+		{
+			// val e in nodul asta
+
+			// daca fiul din stanga nu e minimal sterg predecesorul lui val de acolo si il pun in locul lui val
+			if (node->children[pos]->keys.size() > m_order - 1)	
+			{
+				node->keys[pos] = m_eraseMaximum(node->children[pos]);
+				return;
+			}
+			
+			// daca fiul din dreapta nu e minimal sterg succesorul lui val de acolo si il pun in locul lui val
+			if (node->children[pos + 1]->keys.size() > m_order - 1)
+			{
+				node->keys[pos] = m_eraseMinimum(node->children[pos + 1]);
+				return;
+			}
+
+			// daca radacina are 1 cheie atunci o sa fie inlocuita cu fiul combinat
+			bool rootHasBeenDeleted = false;			
+			if (m_root->keys.size() == 1)rootHasBeenDeleted = true;
+
+			// daca ambi fii sunt minimali ii unesc
+			m_joinChild(node, pos);
+			
+			if (rootHasBeenDeleted)
+			{
+				m_erase(m_root, val);
+			}
 			else
 			{
-				// fiul nu e minimal
-				m_erase(child, val);
+				// acum val e in fiul de la pos
+				m_erase(node->children[pos], val);
 			}
 		}
 	}
 }
 
-template <class T> 
+template<class T>
+T BTree<T>::m_eraseMaximum(Node*& node)
+{
+	if (node->isLeaf == true) // daca e frunza maximul e ultima cheie si o sterg (node are cel putin m_order chei)
+	{
+		T temp = node->keys.back();
+		node->keys.pop_back();
+		return temp;
+	}
+	// altfel ma duc in ultimul fiu
+
+	Node* child = node->children.back();
+	Node* leftSibling = node->children.rbegin()[1];
+	if (child->keys.size() == m_order - 1)					// daca ultimul fiu e minimal
+	{
+		if (leftSibling->keys.size() == m_order - 1)		// daca si fratele din stanga e minimal
+		{
+			m_joinChild(node, node->children.size() - 2);	// unesc fratele la stanga cu fiul
+			return m_eraseMaximum(node->children.back());	// acum ultimul fiu e combinatia dintre cei doi
+		}
+		// daca fratele din stanga nu e minimal iau de la el o cheie
+		m_rotate(node, node->children.size() - 1, node->children.size() - 2);
+		return m_eraseMaximum(node->children.back());
+	}
+	// daca ultimul fiu nu e minimal pot sa ma duc in el direct
+	return m_eraseMaximum(node->children.back());
+}
+
+template<class T>
+T BTree<T>::m_eraseMinimum(Node*& node)
+{
+	if (node->isLeaf == true)	// daca e frunza minimul e prima cheie si o sterg (node are cel putin m_order chei)
+	{
+		T temp = node->keys[0];
+		node->keys.erase(node->keys.begin());
+		return temp;
+	}
+
+	// altfel ma duc in primul fiu
+	Node* child = node->children[0];
+	Node* rightSibling = node->children[1];
+	
+	if (child->keys.size() == m_order - 1)				// daca primul fiu e minimal
+	{
+		if (rightSibling->keys.size() == m_order - 1)	// daca si fratele la dreapta e minimal 
+		{
+			m_joinChild(node, 0);						// unesc fiul cu fratele
+			return m_eraseMinimum(node->children[0]);	// acum primul fiu e combinatia dintre cei doi
+		}
+		// daca fratele la dreapta nu e minimal iau de la el o cheie
+		m_rotate(node, 0, 1);
+		return m_eraseMinimum(node->children[0]);
+	}
+	// daca primul fiu nu e minimal pot sa ma duc in el direct
+	return m_eraseMinimum(node->children[0]);
+}
+
+template<class T> 
 void BTree<T>::m_inorder(std::vector<T>& vals, const Node* node) const
 {
 	if (node == nullptr)return;
@@ -458,15 +553,24 @@ void BTree<T>::Insert(const T& val)
 template<class T>
 void BTree<T>::Erase(const T& val)
 {
+	if (m_root == nullptr)
+		throw std::invalid_argument("Btree is empty");
+
 	m_erase(m_root, val);
+	if (m_root->keys.size() == 0)
+	{
+		delete m_root;
+		m_root = nullptr;
+	}
 }
 
 template<class T>
 bool BTree<T>::Check(const T& val) const
 {
-	Node* node = m_root;
-	if (m_root == nullptr)return false;
+	if (m_root == nullptr)
+		return 0;
 
+	Node* node = m_root;
 	while (true)
 	{
 		// caut binar cea mai din dreapta cheie mai mica sau egala cu val
@@ -578,4 +682,21 @@ T BTree<T>::Predecessor(const T& val) const
 			}
 		}
 	}
+}
+
+template<class T>
+void BTree<T>::m_deleteTree(Node*& node)
+{
+	if (node == nullptr)return;
+ 
+	if (node->isLeaf == false)
+		for (size_t i = 0; i < node->children.size(); ++i)
+			m_deleteTree(node->children[i]);
+
+	delete node;
+}
+
+template<class T>
+BTree<T>::~BTree() {
+	m_deleteTree(m_root);
 }
