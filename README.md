@@ -16,7 +16,7 @@ Constructorul primeste ca parametru ordinul (default este 2 => 234-Tree)
 
 Implementare e bazata pe descrierea BTrees din [Introduction to Algorithms](https://edutechlearners.com/download/Introduction_to_algorithms-3rd%20Edition.pdf) pagina 484.
 Am optimizat unele parti, de exemplu cautarea unei chei intr-un nod se face cu cautare binara, stergerea si inserarea se fac cu o singura miscare in jos in arbore.
-Totusi inserarea si stergerea nu este foarte rapida pentru ca cheile sunt stocate intr-un vector. Inserarea se face cu sortare prin insertie ca sa se faca minimul de interschimbari
+Totusi inserarea si stergerea nu este foarte rapida pentru ca cheile sunt stocate intr-un vector.
 
 Nu am testat daca este mai rapid cu std::list in loc de std::vector pentru retinerea cheilor si fiilor dintr-un nod dar pentru valori mici al ordinului (< 100) se misca destul de repede. 
 
